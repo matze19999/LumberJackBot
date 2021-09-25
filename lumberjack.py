@@ -1,33 +1,47 @@
-from selenium import webdriver
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.keys import Keys
-from PIL import ImageGrab, Image
-from mss import mss
-import time
+while True:
+    try:
+        import os
+        from selenium import webdriver
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.common.action_chains import ActionChains
+        from selenium.webdriver.common.keys import Keys
+        from PIL import Image
+        from mss import mss
+        import mss
+        import time
+        import win32com.client as comctl
+        break
+    except ModuleNotFoundError:
+        os.system("pip3 install --upgrade selenium mss pywin32 pillow")
+
+
+wsh = comctl.Dispatch("WScript.Shell")
 
 #Highscore: 1004
 
+# Check coordiantes of screenshot here
 # https://yangcha.github.io/iview/iview.html
 
 url = 'https://tbot.xyz/lumber/#ey'
 
 # Set Pixels here
 # 3440 x 1440
-x_left = 800
-x_right = 922
-abstand = 50
-y_begin = 970
-anzahl_aeste = 6
-y_end = y_begin - (anzahl_aeste * abstand)
+x_left = 10 # linker Balken
+x_right = 80 # rechter Balken
+y_begin = 577 # Beginn erster Ast
+abstand = 100 # Abstand zwischen Ästen
+anzahl_aeste = 5 # Wie viel Äste vorberechnet werden sollen
+y_end = y_begin - ((anzahl_aeste + 1) * abstand)
+monitor = {"top": 390, "left": 820, "width": 90, "height": 700} # Bildausschnitt des Monitors für Screenshots
 
-# 1920 x 1080
-x_left = 430
-x_right = 536
-abstand = 100
-y_begin = 609
-anzahl_aeste = 5
-y_end = y_begin - (anzahl_aeste * abstand)
+'''# 1920 x 1080
+x_left = 430  # linker Balken
+x_right = 536  # rechter Balken
+abstand = 100 # abstand zwischen Ästen
+y_begin = 609 # Beginn erster Ast
+anzahl_aeste = 4 # Wie viel Äste vorberechnet werden sollen
+y_end = y_begin - ((anzahl_aeste + 1) * abstand)
+monitor = {"top": 390, "left": 820, "width": 90, "height": 700}'''
 
 # Initialisiere Browser
 options = webdriver.ChromeOptions()
@@ -49,35 +63,41 @@ time.sleep(1)
 browser.find_element_by_class_name('_hover').send_keys(Keys.SPACE)
 time.sleep(0.7)
 
-with mss() as sct:
+with mss.mss() as sct:
+    sct_img = sct.grab(monitor)
+    #mss.tools.to_png(sct_img.rgb, sct_img.size, output=output) Save Screenshot to current folder
+    img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+    px = img.load()
+    color_right_1 = str(px[x_right, y_begin])
+    if '161' in color_right_1:
+        wsh.SendKeys("{LEFT}")
+        wsh.SendKeys("{LEFT}")
+    else:
+        wsh.SendKeys("{RIGHT}")
+        wsh.SendKeys("{RIGHT}")
 
     while True:
         next_moves = []
         color_left = []
         color_right = []
-        sct_img = sct.grab(sct.monitors[1])
+        sct_img = sct.grab(monitor)
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
         px = img.load()
 
         for i in range(y_begin, y_end, -abstand ):
-            color_left.append(str(px[x_left, i]))
-            color_right.append(str(px[x_right, i]))
-
-        for i in range(0, anzahl_aeste, 1):
-            if '161' in str(color_left[i]):
-                print('R')
+            if '161' in str(px[x_left, i]):
                 next_moves.append('R')
                 next_moves.append('R')
-            elif '161' in str(color_right[i]):
-                print('L')
+            elif '161' in str(px[x_right, i]):
                 next_moves.append('L')
                 next_moves.append('L')
 
-        #print(next_moves)
+        print(next_moves)
         for move in next_moves:
             if move == 'L':
-                browser.find_element_by_class_name('_hover').send_keys(Keys.ARROW_LEFT)
+                wsh.SendKeys("{LEFT}")
+                time.sleep(0.0001)
             else:
-                browser.find_element_by_class_name('_hover').send_keys(Keys.ARROW_RIGHT)
-
+                wsh.SendKeys("{RIGHT}")
+                time.sleep(0.0001)
         time.sleep(0.05)
